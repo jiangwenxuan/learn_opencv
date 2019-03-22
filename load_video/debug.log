@@ -1,0 +1,6 @@
+[0314/223011.834:ERROR:crash_report_database_win.cc(551)] GetFileAttributes C:\Users\90465\AppData\Local\Google\Chrome\User Data\Crashpad\reports: not a directory
+[0314/223011.836:ERROR:registration_protocol_win.cc(84)] TransactNamedPipe: 管道已结束。 (0x6D)
+[0314/223011.837:ERROR:crash_report_database_win.cc(551)] GetFileAttributes C:\Users\90465\AppData\Local\Google\Chrome\User Data\Crashpad\reports: not a directory
+[0314/231020.590:ERROR:crash_report_database_win.cc(551)] GetFileAttributes C:\Users\90465\AppData\Local\Google\Chrome\User Data\Crashpad\reports: not a directory
+[0314/231020.592:ERROR:registration_protocol_win.cc(84)] TransactNamedPipe: 管道已结束。 (0x6D)
+[0314/231020.593:ERROR:crash_report_database_win.cc(551)] GetFileAttributes C:\Users\90465\AppData\Local\Google\Chrome\User Data\Crashpad\reports: not a directory
