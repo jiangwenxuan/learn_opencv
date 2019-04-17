@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 
-cap = cv2.VideoCapture('test.avi')
+cap = cv2.VideoCapture('test.mp4')
 # 定义fourecc代码
 fourcc = cv2.VideoWriter_fourcc(*'MJPG')
 
