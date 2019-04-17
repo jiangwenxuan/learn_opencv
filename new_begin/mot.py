@@ -1,47 +1,30 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import cv2
-#from imutils.video import VideoStream
-#from imutils.video import FPS
-import time
 import argparse
 import sys
+import time
+
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+from imutils.video import FPS, VideoStream
 
 from entity import Entity
+
 
 def main(argv):
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-v', '--video', type = str, \
-        help = 'path to input file')
-    parser.add_argument('-t', '--tracker', type = str, \
-        default = 'kcf', help = 'OpenCV object tracker type')
+    parser.add_argument('--video', help = 'path to input file')
+    parser.add_argument('--iou', default = 0.2, help = 'threshold for tracking')
     args = vars(parser.parse_args())
-
-    (major, minor) = cv2.__version__.split('.')[:2]
-
-    if int(major) == 3 and int(minor) < 3:
-        tracker = cv2.Tracker_create(args['tracker'].upper())
-    else:
-        OPENCV_OBJECT_TRACKERS = {
-            "csrt": cv2.TrackerCSRT_create,
-            "kcf": cv2.TrackerKCF_create,
-            "boosting": cv2.TrackerBoosting_create,
-            "mil": cv2.TrackerMIL_create,
-            "tld": cv2.TrackerTLD_create,
-            "medianflow": cv2.TrackerMedianFlow_create,
-            "mosse": cv2.TrackerMOSSE_create
-        }
-        tracker = OPENCV_OBJECT_TRACKERS[args['tracker']]()
 
     if not args.get('video', False):
         print('[info] starting video stream...')
-        vs = VideoStream(src = 0).start()
-        time.sleep(1.0)
-    else:
-        vs = cv2.VideoCapture(args['video'])
+        track('false', args['iou'])
 
-    track(tracker, args['video'])
+# default tracker is kcf, you can change tracker in entity.Entity._init_tracker()
+    else:
+        track(args['video'], args['iou'])
+
 
 def overlap(box1, box2):
 # check the overlap of two boxes
@@ -62,8 +45,14 @@ def overlap(box1, box2):
         ratio = area / (area1 + area2 - area)
         return ratio
 
-def track(tracker, video):
-    camera = cv2.VideoCapture(video)
+
+def track(video, iou):
+    if video == 'false':
+        vs = VideoStream(src = 0).start()
+        time.sleep(1.0)
+    else:
+        camera = cv2.VideoCapture(video)
+    
     res, frame = camera.read()
     y_size = frame.shape[0]
     x_size = frame.shape[1]
@@ -76,6 +65,8 @@ def track(tracker, video):
 
         if not res:
             break
+
+# deal the frame to find the edge of our object
         test = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         hsv_test = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
         light_orange = (17, 150, 150)
@@ -90,20 +81,12 @@ def track(tracker, video):
 
         for c in contours:
             x, y, w, h = cv2.boundingRect(c)
-
-            img = frame[y : y + h, x : x + w, :]
-            rimg = cv2.resize(img, (64, 64), interpolation = cv2.INTER_CUBIC)
-            image_data = np.array(rimg, dtype = 'float32')
-            image_data /= 255
-            roi = np.expand_dims(image_data, axis = 0)
-# some judge function
-
             e = Entity(counter, (x, y, w, h), frame)
 
             if track_list:
                 count = 0
                 num = len(track_list)
-                for p in track_lisk:
+                for p in track_list:
                     if (overlap((x, y, w, h), p.windows)) < iou:
                         count = count + 1
                 if count == num:
@@ -120,7 +103,6 @@ def track(tracker, video):
                     e.update(frame)
                 else:
                     track_list.remove(e)
-        frames += 1
         cv2.imshow('detection', frame)
         if cv2.waitKey(30) &0xFF == 'q':
             break

@@ -6,15 +6,17 @@ class Entity():
         self.vid = vid
         self.windows = windows
         self.center = self._set_center(windows)
-        self.trajectory = [self.cener]
+        self.trajectory = [self.center]
         self.tracker = self._init_tracker(windows, frame)
 
-    def _set_init_tracker(self, windows):
+    def _set_center(self, windows):
         x, y, w, h = windows
         x = (2 * x + w) / 2
         y = (2 * y + h) / 2
         center = np.array([np.float32(x), np.float32(y)], np.float32)
         return center
+
+# opencv_object_tracker: "csrt", "kcf", "boosting", "mil", "tld", "medianflow", "mosse"
 
     def _init_tracker(self, windows, frame):
         x, y, w, h = windows
