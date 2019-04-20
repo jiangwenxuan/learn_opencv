@@ -7,8 +7,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from imutils.video import FPS, VideoStream
 
-from entity import Entity
-
 
 def main(argv):
     parser = argparse.ArgumentParser()

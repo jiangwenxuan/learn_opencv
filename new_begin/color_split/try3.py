@@ -19,8 +19,9 @@ light_orange = (17, 150, 150)
 dark_orange = (22, 210, 210)
 
 mask = cv2.inRange(hsv_test, light_orange, dark_orange)
+plt.imshow(mask)
+plt.show()
 result = cv2.bitwise_and(test, test, mask = mask)
-
 kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (8, 8))
 result = cv2.morphologyEx(result, cv2.MORPH_CLOSE, kernel)
 #blur = cv2.GaussianBlur(result, (7, 7), 0)
