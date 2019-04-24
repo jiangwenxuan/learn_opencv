@@ -10,13 +10,36 @@ import serial
 class track():
     def __init__(self):
         self.trackerTypes = ['BOOSTING', 'MIL', 'KCF', 'TLD', 'MEDIANFLOW', 'MOSSE', 'CSRT']
+        self.trackerType = 'CSRT'
         self.bboxes = []
         self.colors = []
         self.ser = self.serialCreate()
+        self.pixel = []
+        self.shapeX = 0
+        self.shapeY = 0
+        self.speed = [121, 137, 153, 152, 151]
 
+# make sure how to split the pixel, numArea is the num of the split area, theScale is the scale of turn and straight
+# we use splitPixel in start_track()
+    def splitPixel(self, numArea, theScale):
+        currNum = (numArea - 1) * theScale + 1
+        currPixel = int(self.shapeX / currNum)
+        middle = int(numArea / 2)
+        currTotal = 0
+        for i in range(numArea - 1):
+            if i != middle:
+                currTotal = currTotal + currPixel * theScale
+                self.pixel.append(currTotal)
+            else:
+                currTotal = currTotal + currPixel
+                self.pixel.append(currTotal)
+        self.pixel.append(self.shapeX)
+
+# init serial port
+# we use serialCreate in start_track()
     def serialCreate(self):
         timex = 5
-        bps = 115200
+        bps = 9600
         portx = "COM1"
         ser = serial.Serial(portx, bps, timeout = timex)
         return ser
@@ -67,19 +90,35 @@ class track():
         cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 200, 200), 2)
 
 
-    def start_track(self):
-        
-        trackerType = 'CSRT'
+    def startTrack(self):
         cap = cv2.VideoCapture(0)
-        
+        while True:
+            ans = self.detailOfTrack(cap)
+            if ans == 0:
+                break
+
+        cap.release()
+        cv2.destroyAllWindows()
+    
+    def detailOfTrack(self, cap):
         success, frame = cap.read()
-        shapeX = frame.shape[1]
         if not success:
             print("failed to read video")
             sys.exit(1)
 
-        multiTracker = cv2.MultiTracker_create()
+        self.shapeX = frame.shape[1]
+        self.shapeY = frame.shape[0]
+        self.splitPixel(5, 3)
 
+        self.bboxes.clear()
+        self.colors.clear()
+        mark = 0
+        multiTracker = cv2.MultiTracker_create()
+        maxX = 5
+        maxY = 5
+        maxW = 5
+        maxH = 5
+        
         while True:
             bbox = cv2.selectROI('multiTracker', frame)
             self.bboxes.append(bbox)
@@ -89,14 +128,13 @@ class track():
             k = cv2.waitKey(0) & 0xFF
             if k == ord('q'):
                 break
-
         for bbox in self.bboxes:
-            multiTracker.add(self.createTrackerByName(trackerType), frame, bbox)
+            multiTracker.add(self.createTrackerByName(self.trackerType), frame, bbox)
         
         while cap.isOpened():
             success, frame = cap.read()
             if not success:
-                break
+                return 1
             success, boxes = multiTracker.update(frame)
             maxObject = 0
             offsetX = 0
@@ -107,24 +145,33 @@ class track():
                 if maxObject < currentArea:
                     maxObject = currentArea
                     offsetX = int(newbox[0] + (newbox[2] / 2))
-                cv2.rectangle(frame, p1, p2, self.colors[i], 2, 1)
+                    maxX = newbox[0]
+                    maxY = newbox[1]
+                    maxW = newbox[2]
+                    maxH = newbox[3]
                 
-# use serial port send the nearest object's x's position
-            offsetX = ((offsetX / shapeX) * 255) + 0.5
-            offsetX = int(offsetX)
-# dec to byte
-            m = bytes([offsetX])
-
-            self.ser.write(m)
+                cv2.rectangle(frame, p1, p2, self.colors[i], 2, 1)
             
+            if (maxX <= 5) or (maxY <= 5) or (maxX + maxW - 5 >= self.shapeX) or (maxY + maxH - 5 >= self.shapeY):
+                if mark > 5:
+                    return 1
+                mark = mark + 1
+
+# use serial port to control the ship  
+            curr = 0
+            for i in range(len(self.pixel)):
+                if offsetX <= self.pixel[i]:
+                    curr = i
+                    break
+            m = bytes([self.speed[curr]])
+            self.ser.write(m)
+
             cv2.imshow('multiTracker', frame)
 
             k = cv2.waitKey(1) & 0xFF
             if k == ord('q'):
-                break
+                return 0
 
-        cap.release()
-        cv2.destroyAllWindows()
 
 track1 = track()
-track1.start_track()
+track1.startTrack()
