@@ -7,6 +7,8 @@ import serial
 import imutils
 from imutils.video import FPS, VideoStream
 
+# 英文注释部分是对代码的说明，为了方便使用，我又改成中文注释
+
 class track():
     def __init__(self, com):
         self.trackerTypes = ['BOOSTING', 'MIL', 'KCF', 'TLD', 'MEDIANFLOW', 'MOSSE', 'CSRT']
@@ -17,7 +19,13 @@ class track():
         self.pixel = []
         self.shapeX = 0
         self.shapeY = 0
-        self.speed = [121, 137, 153, 152, 151]
+        self.speed = []
+
+# change speed(hex) into speed(dec)
+    def speedArea(self, hexSpeed):
+        for i in hexSpeed:
+            m = int(i, 16)
+            self.speed.append(m) 
 
 # make sure how to split the pixel, numArea is the num of the split area, theScale is the scale of turn and straight
 # we use splitPixel in start_track()
@@ -44,7 +52,7 @@ class track():
         ser = serial.Serial(portx, bps, timeout = timex)
         return ser
 
-# choose out tracker
+# choose tracker
     def createTrackerByName(self, trackerType):
         if trackerType == self.trackerTypes[0]:
             tracker = cv2.TrackerBoosting_create()
@@ -69,7 +77,7 @@ class track():
         return tracker
 
 # use color segmentation to find out object
-    def before_track(self, frame):
+    def before_track(self, frame, multiTTracker):
         test = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         hsv_test = cv2.cvtColor(frame, cv2.COLOR_RGB2HSV)
 
@@ -86,12 +94,15 @@ class track():
         _, gray = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY)
         
         contours, hier = cv2.findContours(gray, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        x, y, w, h = cv2.boundingRect(contours[0])
-        cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 200, 200), 2)
+        for i in contours:
+            x, y, w, h = cv2.boundingRect(i)
+            if w * h > 5:
+                multiTTracker.add(self.createTrackerByName(self.trackerType), frame, (x, y, w, h))
 
 
-    def startTrack(self):
-        cap = cv2.VideoCapture(0)
+# start track
+    def startTrack(self, camera, numArea, theScale):
+        cap = cv2.VideoCapture(camera)
 
         success, frame = cap.read()
         if not success:
@@ -100,7 +111,7 @@ class track():
 
         self.shapeX = frame.shape[1]
         self.shapeY = frame.shape[0]
-        self.splitPixel(5, 3)
+        self.splitPixel(numArea, theScale)
         
         while True:
             ans = self.detailOfTrack(cap)
@@ -111,7 +122,6 @@ class track():
         cv2.destroyAllWindows()
     
     def detailOfTrack(self, cap):
-
         self.bboxes.clear()
         self.colors.clear()
         mark = 0
@@ -163,7 +173,11 @@ class track():
 
             if k == ord('q'):
                 return 0
+            
+            if k == ord('t'):
+                return 1
 
+# 鼠标框定代码，改用颜色分割则注释此段代码
             if k == ord('s'):
                 while True:
                     bbox = cv2.selectROI('multiTracker', frame)
@@ -177,6 +191,28 @@ class track():
                 for bbox in self.bboxes:
                     multiTracker.add(self.createTrackerByName(self.trackerType), frame, bbox)
 
+# 颜色分割自动框定目标代码，需要的话取消注释，还未完成
+            # if k == ord('s'):
+            #     self.before_track(frame, multiTracker)
 
+
+# 以下部分是参数设置部分，可以修改
+
+# 速度可以自己增加
+speed = ['0x46', '0x56', '0x66', '0x65', '0x64']
+
+# 可以在这里修改占用的串口
 track1 = track("COM1")
-track1.startTrack()
+# 把speed转化10进制
+track1.speedArea(speed)
+
+# 第一个参数是摄像头编号，可能是0, 1, 2......n
+# 第二个参数是屏幕一共要分几个区，不同的区是不同的电机转速，与speed[]对应
+# 第三个参数是一个转向分区和中间的直行分区的像素宽度的比值
+track1.startTrack(0, 5, 3)
+
+# 用鼠标框定追踪目标指南
+# PS：在摄像头打开后，按‘s’是暂停这帧，框定目标后按回车，再按任意键，可以框定第二个目标
+# PS：框定结束后按‘q’，开始追踪
+# PS：按‘t’，退出此次追踪，开始下一次追踪
+# PS：按‘q’退出程序
