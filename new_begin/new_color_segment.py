@@ -4,22 +4,22 @@ import time
 from random import randint
 import cv2
 import serial
-import imutils
-from imutils.video import FPS, VideoStream
 
 # 英文注释部分是对代码的说明，为了方便使用，我又改成中文注释
 
 class track():
-    def __init__(self, com):
+    def __init__(self, com, mark):
         self.trackerTypes = ['BOOSTING', 'MIL', 'KCF', 'TLD', 'MEDIANFLOW', 'MOSSE', 'CSRT']
         self.trackerType = 'CSRT'
         self.bboxes = []
         self.colors = []
-        self.ser = self.serialCreate(com)
         self.pixel = []
         self.shapeX = 0
         self.shapeY = 0
         self.speed = []
+        self.flag = mark
+        if mark == True:
+            self.ser = self.serialCreate(com)
 
 # change speed(hex) into speed(dec)
     def speedArea(self, hexSpeed):
@@ -153,10 +153,10 @@ class track():
                         maxH = newbox[3]
                     cv2.rectangle(frame, p1, p2, self.colors[i], 2, 1)
             
-                if (maxX <= 5) or (maxY <= 5) or (maxX + maxW - 5 >= self.shapeX) or (maxY + maxH - 5 >= self.shapeY):
-                    if mark > 5:
-                        return 1
-                    mark = mark + 1
+                # if (maxX <= 5) or (maxY <= 5) or (maxX + maxW - 5 >= self.shapeX) or (maxY + maxH - 5 >= self.shapeY):
+                #     if mark > 5:
+                #         return 1
+                #     mark = mark + 1
 
 # use serial port to control the ship  
                 curr = 0
@@ -165,7 +165,8 @@ class track():
                         curr = i
                         break
                 m = bytes([self.speed[curr]])
-                self.ser.write(m)
+                if self.flag == True:
+                    self.ser.write(m)
 
             cv2.imshow('multiTracker', frame)
 
@@ -195,24 +196,25 @@ class track():
             # if k == ord('s'):
             #     self.before_track(frame, multiTracker)
 
-
+############################################################################################
 # 以下部分是参数设置部分，可以修改
 
-# 速度可以自己增加
-speed = ['0x46', '0x56', '0x66', '0x65', '0x64']
+# 速度可以自己设置
+speed = ['0x36', '0x46', '0x56', '0x66', '0x65', '0x64', '0x63']
 
-# 可以在这里修改占用的串口
-track1 = track("COM1")
+# 第一个参数可以在这里修改占用的串口
+# 第二个参数决定是否向串口发信息，如果发信息，为True；否则为False
+track1 = track("COM2", True)
 # 把speed转化10进制
 track1.speedArea(speed)
 
 # 第一个参数是摄像头编号，可能是0, 1, 2......n
 # 第二个参数是屏幕一共要分几个区，不同的区是不同的电机转速，与speed[]对应
 # 第三个参数是一个转向分区和中间的直行分区的像素宽度的比值
-track1.startTrack(0, 5, 3)
+track1.startTrack(0, 7, 9)
 
 # 用鼠标框定追踪目标指南
 # PS：在摄像头打开后，按‘s’是暂停这帧，框定目标后按回车，再按任意键，可以框定第二个目标
 # PS：框定结束后按‘q’，开始追踪
 # PS：按‘t’，退出此次追踪，开始下一次追踪
-# PS：按‘q’退出程序
+# PS：按‘q’退出程序`
